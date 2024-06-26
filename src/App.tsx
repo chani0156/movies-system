@@ -97,7 +97,7 @@ const App: React.FC = () => {
   return (
     <Container>
       <Header connected={isConnected} lastUpdateTime={lastUpdateTime} />
-      <VoteGraphExample votesData={fakeVotesData} />
+      {/* <VoteGraphExample votesData={fakeVotesData} /> */}
       <Box mt={2}>
         <MovieTable movies={movies} onMovieSelect={handleMovieSelect} />
       </Box>
