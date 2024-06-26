@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableRow, TextField, Box, TableSortLabel } from '@mui/material';
 import { Movie } from '../models/types';
-
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import RemoveIcon from '@mui/icons-material/Remove';
 interface MovieTableProps {
   movies: Movie[];
-  onMovieSelect: (movieId: number) => void;
+  onMovieSelect: (movie: Movie) => void;
 }
 
 const MovieTable: React.FC<MovieTableProps> = ({ movies, onMovieSelect }) => {
@@ -63,7 +65,7 @@ const MovieTable: React.FC<MovieTableProps> = ({ movies, onMovieSelect }) => {
         </TableHead>
         <TableBody>
           {sortedMovies.map((movie) => (
-            <TableRow key={movie.id} onClick={() => onMovieSelect(movie.id)}>
+            <TableRow key={movie.id} onClick={() => onMovieSelect(movie)}>
               <TableCell>{movie.id}</TableCell>
               <TableCell>{movie.description}</TableCell>
               <TableCell>{movie.totalVotes}</TableCell>

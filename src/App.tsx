@@ -4,96 +4,111 @@ import Header from './components/Header';
 import MovieTable from './components/MovieTable';
 import MovieGraph from './components/MovieGraph';
 import { login, getMovies } from './services/ApiService'
-import { setupSignalRConnection } from './services/SignalRService';
+import { createHubConnection } from './services/SignalRService';
 import { Box, Container } from '@mui/material';
+import { Movie } from './models/types';
+import VoteGraphExample from './components/VoteGraphExample';
 
 const App: React.FC = () => {
-  const [movies, setMovies] = useState<any[]>([]);
-  const [selectedMovie, setSelectedMovie] = useState<number | null>(null);
-  const [votes, setVotes] = useState<{ time: string; count: number }[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [lastReceiveTime, setLastReceiveTime] = useState('');
+  const [lastUpdateTime, setLastUpdateTime] = useState('');
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [voteData, setVoteData] = useState<{ time: string; votes: number }[]>([]);
+  const fakeVotesData = [
+    { time: '2023-06-26T10:00:00', votes: 5 },
+    { time: '2023-06-26T10:05:00', votes: 8 },
+    { time: '2023-06-26T10:10:00', votes: 15 },
+    { time: '2023-06-26T10:15:00', votes: 0 },
+    { time: '2023-06-26T10:20:00', votes: 20 },
+    { time: '2023-06-26T10:25:00', votes: 5 },
+    { time: '2023-06-26T10:30:00', votes: 18 },
+    { time: '2023-06-26T10:35:00', votes: 5 },
+    { time: '2023-06-26T10:40:00', votes: 30 },
+    { time: '2023-06-26T10:45:00', votes: 3 },
+    { time: '2023-06-26T10:50:00', votes: 40 },
+    { time: '2023-06-26T10:55:00', votes: 38 },
+    { time: '2023-06-26T11:00:00', votes: 42 },
+    { time: '2023-06-26T11:05:00', votes: 45 },
+    { time: '2023-06-26T11:10:00', votes: 50 },
+    { time: '2023-06-26T11:15:00', votes: 55 },
+    { time: '2023-06-26T11:20:00', votes: 60 },
+    { time: '2023-06-26T11:25:00', votes: 62 },
+    { time: '2023-06-26T11:30:00', votes: 65 },
+    { time: '2023-06-26T11:35:00', votes: 70 },
+  ];
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        debugger
-        const token = await login();
-        const initialMovies = await getMovies(token);
-        setMovies(initialMovies);
-        const connection = setupSignalRConnection(token, onDataReceived);
-        return connection;
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
+
+
+    const initialize = async () => {
+      const token = await login();
+      const movies = await getMovies(token);
+      setMovies(movies.map((movie: any) => ({ ...movie, totalVotes: 0, lastUpdatedTime: '', positionChange: 'same' })));
+
+      const connection = createHubConnection(token);
+      connection.on('DataReceived', (data: any) => {
+        const receivedData = data.map((item: any) => ({
+          generatedTime: new Date(item.generatedTime).toLocaleString(),
+          itemId: item.itemId,
+          itemCount: item.itemCount,
+        }));
+
+        const updatedMovies = [...movies];
+        receivedData.forEach((vote: any) => {
+          const movie = updatedMovies.find(m => m.id === vote.itemId);
+          if (movie) {
+            movie.totalVotes += vote.itemCount;
+            movie.lastUpdated = vote.generatedTime;
+            // Add logic to determine positionChange
+          }
+        });
+
+        setMovies(updatedMovies);
+        setLastUpdateTime(new Date().toLocaleString());
+        //////////////////////////////////////////////////////
+        if (selectedMovie) {
+          debugger
+          const selectedMovieVotes = receivedData.filter((vote: { itemId: number; }) => vote.itemId === selectedMovie.id);
+          setVoteData(prevData => [
+            ...prevData,
+            ...selectedMovieVotes.map((vote: { generatedTime: any; itemCount: any; }) => ({
+              time: vote.generatedTime,
+              votes: vote.itemCount,
+            }))
+          ].slice(-20)); 
+        }
+      });
+         /////////////////////////////////////////////////////
+      connection.start()
+        .then(() => setIsConnected(true))
+        .catch(() => setIsConnected(false));
+
+      connection.onclose(() => setIsConnected(false));
     };
 
-    fetchData().then((connection) => {
-      if (connection) {
-        connection.onclose(() => setIsConnected(false));
-        connection.onreconnected(() => setIsConnected(true));
-      }
-    });
+    initialize();
   }, []);
 
-  const onDataReceived = (data: any) => {
-    const formattedTime = new Date(data.generatedTime).toLocaleString();
-    setLastReceiveTime(formattedTime);
-
-    const updatedMovies = movies.map((movie: any) => {
-      if (movie.id === data.itemId) {
-        return {
-          ...movie,
-          totalVotes: movie.totalVotes + data.itemCount,
-          lastUpdatedTime: formattedTime,
-          icon: calculateIcon(movie.totalVotes, movie.totalVotes + data.itemCount),
-        };
-      }
-      return movie;
-    });
-
-    setMovies(updatedMovies);
-  };
-
-  const calculateIcon = (oldCount: number, newCount: number): string => {
-    if (newCount > oldCount) {
-      return 'up'; // your icon for up
-    } else if (newCount < oldCount) {
-      return 'down'; // your icon for down
-    } else {
-      return 'same'; // your icon for no change
-    }
-  };
-
-
-
-
-
-  const handleMovieSelect = (movieId: number) => {
-    const selected = movies.find((movie: any) => movie.id === movieId);
-    if (selected) {
-      setSelectedMovie(selected.id);
-      const votesData = movies
-        .find((movie: any) => movie.id === movieId)
-        ?.votes.slice(-20)
-        .map((vote: any) => ({
-          time: new Date(vote.time).toLocaleString(),
-          count: vote.count,
-        }));
-      setVotes(votesData || []);
-    }
+  const handleMovieSelect = (movie: Movie) => {
+    setSelectedMovie(movie);
+    setVoteData([]); // Reset vote data for the selected movie
   };
 
   return (
-    <div>
-     <Container>
-      <Header connected={isConnected} lastUpdateTime ={lastReceiveTime} />
-      <Box mt={4}>
+    <Container>
+      <Header connected={isConnected} lastUpdateTime={lastUpdateTime} />
+      <VoteGraphExample votesData={fakeVotesData} />
+      <Box mt={2}>
         <MovieTable movies={movies} onMovieSelect={handleMovieSelect} />
-        {/* {selectedMovieVotes.length > 0 && <MovieGraph votes={selectedMovieVotes} />} */}
       </Box>
+      {selectedMovie && (
+        <Box mt={2}>
+          <MovieGraph data={voteData} />
+        </Box>
+      )}
     </Container>
-    </div>
   );
 };
 
 export default App;
+
