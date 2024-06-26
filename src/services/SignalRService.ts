@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 
-const HUB_URL = 'http://62.90.222.249:10001/ClientHub';
+//const HUB_URL = process.env.HUB_URL;
 
 export const createHubConnection = (token: string) => {
   return new signalR.HubConnectionBuilder()

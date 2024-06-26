@@ -9,7 +9,7 @@ interface VoteGraphProps {
 }
 
 const MovieGraph: React.FC<VoteGraphProps> = ({ data }) => {
-  debugger
+  
   const chartData = {
     labels: data.map(item => item.time),
     datasets: [

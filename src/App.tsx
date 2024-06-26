@@ -1,84 +1,76 @@
-// App.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useReducer } from 'react';
 import Header from './components/Header';
 import MovieTable from './components/MovieTable';
 import MovieGraph from './components/MovieGraph';
-import { login, getMovies } from './services/ApiService'
+import { login, getMovies } from './services/ApiService';
 import { createHubConnection } from './services/SignalRService';
-import { Box, Container } from '@mui/material';
-import { Movie } from './models/types';
-import VoteGraphExample from './components/VoteGraphExample';
+import { Box, Container, Modal, Backdrop, Fade, IconButton } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import { Movie, Vote } from './models/types';
+import { voteDataReducer } from './reducers/voteDataReducer';
+
+const ADD_VOTE_DATA = 'ADD_VOTE_DATA';
 
 const App: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState('');
   const [movies, setMovies] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [voteData, setVoteData] = useState<{ time: string; votes: number }[]>([]);
-  const fakeVotesData = [
-    { time: '2023-06-26T10:00:00', votes: 5 },
-    { time: '2023-06-26T10:05:00', votes: 8 },
-    { time: '2023-06-26T10:10:00', votes: 15 },
-    { time: '2023-06-26T10:15:00', votes: 0 },
-    { time: '2023-06-26T10:20:00', votes: 20 },
-    { time: '2023-06-26T10:25:00', votes: 5 },
-    { time: '2023-06-26T10:30:00', votes: 18 },
-    { time: '2023-06-26T10:35:00', votes: 5 },
-    { time: '2023-06-26T10:40:00', votes: 30 },
-    { time: '2023-06-26T10:45:00', votes: 3 },
-    { time: '2023-06-26T10:50:00', votes: 40 },
-    { time: '2023-06-26T10:55:00', votes: 38 },
-    { time: '2023-06-26T11:00:00', votes: 42 },
-    { time: '2023-06-26T11:05:00', votes: 45 },
-    { time: '2023-06-26T11:10:00', votes: 50 },
-    { time: '2023-06-26T11:15:00', votes: 55 },
-    { time: '2023-06-26T11:20:00', votes: 60 },
-    { time: '2023-06-26T11:25:00', votes: 62 },
-    { time: '2023-06-26T11:30:00', votes: 65 },
-    { time: '2023-06-26T11:35:00', votes: 70 },
-  ];
+  const [voteData, dispatch] = useReducer(voteDataReducer, {});
+  const [open, setOpen] = useState(false);
+
   useEffect(() => {
-
-
     const initialize = async () => {
       const token = await login();
+      
       const movies = await getMovies(token);
-      setMovies(movies.map((movie: any) => ({ ...movie, totalVotes: 0, lastUpdatedTime: '', positionChange: 'same' })));
+      setMovies(movies.map((movie: any) => ({
+        ...movie,
+        totalVotes: 0,
+        lastUpdatedTime: '',
+        positionChange: 'same'
+      })));
 
       const connection = createHubConnection(token);
       connection.on('DataReceived', (data: any) => {
-        const receivedData = data.map((item: any) => ({
-          generatedTime: new Date(item.generatedTime).toLocaleString(),
-          itemId: item.itemId,
-          itemCount: item.itemCount,
-        }));
+        debugger
+        const receivedData: Vote[] = [];
 
-        const updatedMovies = [...movies];
-        receivedData.forEach((vote: any) => {
-          const movie = updatedMovies.find(m => m.id === vote.itemId);
-          if (movie) {
-            movie.totalVotes += vote.itemCount;
-            movie.lastUpdated = vote.generatedTime;
-            // Add logic to determine positionChange
+        data.forEach((item: { itemId: any; generatedTime: string | number | Date; itemCount: any; }) => {
+          const existingVote = receivedData.find(vote => vote.itemId === item.itemId && vote.generatedTime === new Date(item.generatedTime).toLocaleString());
+          if (existingVote) {
+            existingVote.itemCount += item.itemCount;
+          } else {
+            receivedData.push({
+              generatedTime: new Date(item.generatedTime).toLocaleString(),
+              itemId: item.itemId,
+              itemCount: item.itemCount,
+            });
           }
+        });
+
+        const updatedMovies = movies.map((movie: { id: any; totalVotes: any; lastUpdatedTime: string; }) => {
+          const vote = receivedData.find(v => v.itemId === movie.id);
+          if (vote) {
+            const time = new Date(vote.generatedTime).toLocaleString();
+            movie.totalVotes += vote.itemCount;
+            movie.lastUpdatedTime = time;
+
+            dispatch({
+              type: ADD_VOTE_DATA,
+              payload: {
+                movieId: vote.itemId,
+                newData: [{ time, votes: vote.itemCount }]
+              }
+            });
+          }
+          return movie;
         });
 
         setMovies(updatedMovies);
         setLastUpdateTime(new Date().toLocaleString());
-        //////////////////////////////////////////////////////
-        if (selectedMovie) {
-          debugger
-          const selectedMovieVotes = receivedData.filter((vote: { itemId: number; }) => vote.itemId === selectedMovie.id);
-          setVoteData(prevData => [
-            ...prevData,
-            ...selectedMovieVotes.map((vote: { generatedTime: any; itemCount: any; }) => ({
-              time: vote.generatedTime,
-              votes: vote.itemCount,
-            }))
-          ].slice(-20)); 
-        }
       });
-         /////////////////////////////////////////////////////
+
       connection.start()
         .then(() => setIsConnected(true))
         .catch(() => setIsConnected(false));
@@ -91,24 +83,60 @@ const App: React.FC = () => {
 
   const handleMovieSelect = (movie: Movie) => {
     setSelectedMovie(movie);
-    setVoteData([]); // Reset vote data for the selected movie
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedMovie(null);
   };
 
   return (
     <Container>
       <Header connected={isConnected} lastUpdateTime={lastUpdateTime} />
-      {/* <VoteGraphExample votesData={fakeVotesData} /> */}
       <Box mt={2}>
         <MovieTable movies={movies} onMovieSelect={handleMovieSelect} />
       </Box>
-      {selectedMovie && (
-        <Box mt={2}>
-          <MovieGraph data={voteData} />
-        </Box>
-      )}
+      <Modal
+        aria-labelledby="transition-modal-title"
+        aria-describedby="transition-modal-description"
+        open={open}
+        onClose={handleClose}
+        closeAfterTransition
+      >
+        <Fade in={open}>
+          <Box 
+            sx={{ 
+              position: 'absolute', 
+              top: '50%', 
+              left: '50%', 
+              transform: 'translate(-50%, -50%)', 
+              width: '80%', 
+              height: '80%', 
+              bgcolor: 'background.paper', 
+              boxShadow: 24, 
+              p: 4,
+              overflow: 'auto' 
+            }}
+          >
+            <IconButton
+              aria-label="close"
+              onClick={handleClose}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+            {selectedMovie && <MovieGraph data={voteData[selectedMovie.id] || []} />}
+          </Box>
+        </Fade>
+      </Modal>
     </Container>
   );
 };
 
 export default App;
-

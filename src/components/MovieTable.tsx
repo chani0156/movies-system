@@ -14,7 +14,6 @@ interface MovieTableProps {
 const MovieTable: React.FC<MovieTableProps> = ({ movies, onMovieSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredMovies, setFilteredMovies] = useState<Movie[]>(movies);
-
   useEffect(() => {
     setFilteredMovies(
       movies.filter((movie) =>
@@ -27,7 +26,7 @@ const MovieTable: React.FC<MovieTableProps> = ({ movies, onMovieSelect }) => {
     { field: 'id', headerName: 'Movie ID', width: 150 },
     { field: 'description', headerName: 'Description', width: 300 },
     { field: 'totalVotes', headerName: 'Total Votes', width: 150 },
-    { field: 'lastUpdated', headerName: 'Last Updated', width: 200 },
+    { field: 'lastUpdatedTime', headerName: 'Last Updated', width: 200 },
     {
       field: 'positionChange',
       headerName: 'Icon',
