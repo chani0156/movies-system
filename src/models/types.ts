@@ -19,16 +19,13 @@ export interface VoteData {
   votes: number;
 }
 
-export interface AddVoteDataAction {
+export interface VoteDataAction {
   type: 'ADD_VOTE_DATA';
   payload: {
     movieId: number;
     newData: VoteData[];
   };
 }
-
-export type VoteDataAction = AddVoteDataAction;
-
 export type VoteDataState = {
   [movieId: number]: VoteData[];
 };

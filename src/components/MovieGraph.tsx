@@ -24,6 +24,8 @@ const MovieGraph: React.FC<VoteGraphProps> = ({ data }) => {
   };
 
   const options = {
+    responsive: true,
+    maintainAspectRatio: false,
     scales: {
       x: { title: { display: true, text: 'Time' } },
       y: { title: { display: true, text: 'Votes' } },

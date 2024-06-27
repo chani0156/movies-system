@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { TextField, Box } from '@mui/material';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { TextField, Box, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -14,6 +15,7 @@ interface MovieTableProps {
 const MovieTable: React.FC<MovieTableProps> = ({ movies, onMovieSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredMovies, setFilteredMovies] = useState<Movie[]>(movies);
+
   useEffect(() => {
     setFilteredMovies(
       movies.filter((movie) =>
@@ -50,8 +52,14 @@ const MovieTable: React.FC<MovieTableProps> = ({ movies, onMovieSelect }) => {
         label="Search by title"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        fullWidth
         margin="normal"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        }}
       />
       <Box sx={{ height: 400, width: '100%' }}>
         <DataGrid

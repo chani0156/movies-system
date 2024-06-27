@@ -1,15 +1,22 @@
 import * as signalR from '@microsoft/signalr';
 
-//const HUB_URL = process.env.HUB_URL;
+const HUB_URL = process.env.REACT_APP_HUB_URL;
+
+if (!HUB_URL) {
+  throw new Error("REACT_APP_HUB_URL environment variable is not set.");
+}
 
 export const createHubConnection = (token: string) => {
-  return new signalR.HubConnectionBuilder()
-    .withUrl('http://62.90.222.249:10001/ClientHub', {
-      accessTokenFactory: () => token,
-    })
-    .withAutomaticReconnect()
-    .configureLogging(signalR.LogLevel.Information)
-    .build();
+  try {
+    return new signalR.HubConnectionBuilder()
+      .withUrl(HUB_URL, {
+        accessTokenFactory: () => token,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
+  } catch (error) {
+    console.error("Error creating SignalR hub connection:", error);
+    throw error;
+  }
 };
-
-
