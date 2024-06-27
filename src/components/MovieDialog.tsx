@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Modal, Backdrop, Fade, IconButton } from '@mui/material';
+import { Box, Modal, Fade, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import MovieGraph from './MovieGraph';
 import { VoteData } from '../models/types';

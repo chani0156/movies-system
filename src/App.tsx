@@ -30,7 +30,7 @@ const App: React.FC = () => {
       })));
 
       const connection = createHubConnection(token);
-      connection.on('DataReceived', (data: any) => handleDataReceived(data, movies));
+      connection.on('DataReceived', (data: any) => handleDataReceived(data,movies));
 
       connection.start()
         .then(() => setIsConnected(true))
@@ -42,9 +42,8 @@ const App: React.FC = () => {
     initialize();
   }, []);
 
-  const handleDataReceived = (data: Vote [], movies: Movie[]) => {
+  const handleDataReceived = (data: Vote [], movies: Movie []) => {
     const receivedData: Vote[] = [];
-
     data.forEach((item) => {
       const time = new Date(item.generatedTime).toLocaleString();
       const existingVote = receivedData.find(vote => vote.itemId === item.itemId && vote.generatedTime === time);
@@ -58,9 +57,10 @@ const App: React.FC = () => {
         });
       }
     });
+    movies.sort((a, b) => b.totalVotes - a.totalVotes);
 
-    const previousState = [...movies];
-
+    
+    //add to movies the total votes
     const updatedMovies = movies.map((movie: Movie) => {
       const vote = receivedData.find(v => v.itemId === movie.id);
       if (vote) {
@@ -77,9 +77,11 @@ const App: React.FC = () => {
       return movie;
     });
 
-    movies.sort((a, b) => b.totalVotes - a.totalVotes);
-    updatedMovies.sort((a, b) => b.totalVotes - a.totalVotes);
 
+
+    //calculate the position for icon column
+    const previousState = [...movies];
+    updatedMovies.sort((a, b) => b.totalVotes - a.totalVotes);
     updatedMovies.forEach((movie, index) => {
       const previousIndex = previousState.findIndex(m => m.id === movie.id);
       if (previousIndex > index) {
@@ -91,7 +93,8 @@ const App: React.FC = () => {
       }
     });
 
-    setMovies(updatedMovies);
+
+    setMovies(updatedMovies.sort((a, b) => a.id - b.id));
     setLastUpdateTime(new Date().toLocaleString());
   };
 
